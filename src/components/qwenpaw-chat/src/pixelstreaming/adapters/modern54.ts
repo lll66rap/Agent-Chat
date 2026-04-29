@@ -110,7 +110,8 @@ export class Modern54Adapter extends BaseAdapter {
     // 配置 PixelStreaming 库的日志级别
     // ue5.4 使用 SetLoggerVerbosity，数值越小越少日志
     // 0 = NoLogging, 1 = Error, 2 = Warning, 3 = Info, 4 = Debug, 5 = Verbose
-    Logger.SetLoggerVerbosity(3); // Info level for debugging
+    // 注意：设置为 1 (Error) 以避免 MouseEnter/MouseLeave 协议不匹配的警告日志
+    Logger.SetLoggerVerbosity(1); // Error level only
 
     try {
       // ue5.4 库的配置（注意：ue5.4 没有 UseCamera 标志）
@@ -128,6 +129,8 @@ export class Modern54Adapter extends BaseAdapter {
         MaxReconnectAttempts: 10,
         // 等待 streamer
         WaitForStreamer: true,
+        // 禁用浏览器键盘快捷键捕获（避免与页面交互冲突）
+        SuppressBrowserKeys: false,
       };
 
       this.logger.info('Initial settings:', initialSettings);
