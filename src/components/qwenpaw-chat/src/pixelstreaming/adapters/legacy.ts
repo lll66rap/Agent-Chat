@@ -666,40 +666,67 @@ export class LegacyAdapter extends BaseAdapter {
 
   /**
    * 归一化并量化无符号坐标
+   * 将屏幕坐标转换为 UE 期望的归一化坐标（0-65535）
    */
   private normalizeAndQuantizeUnsigned(playerElement: HTMLElement, x: number, y: number): { x: number; y: number } {
-    const playerAspectRatio = playerElement.clientHeight / playerElement.clientWidth;
-    const video = playerElement.querySelector('video');
-    const videoAspectRatio = video ? video.videoHeight / video.videoWidth : playerAspectRatio;
+    const video = playerElement.querySelector('video') as HTMLVideoElement | null;
+
+    // 获取视频实际尺寸和显示尺寸
+    const playerWidth = playerElement.clientWidth;
+    const playerHeight = playerElement.clientHeight;
+    const videoWidth = video ? video.videoWidth : playerWidth;
+    const videoHeight = video ? video.videoHeight : playerHeight;
+
+    // 计算宽高比
+    const playerAspectRatio = playerHeight / playerWidth;
+    const videoAspectRatio = videoHeight / videoWidth;
+
+    // 计算视频在播放器中的实际显示区域（考虑 object-fit: contain）
+    let displayWidth: number, displayHeight: number;
+    let offsetX: number, offsetY: number;
 
     if (playerAspectRatio > videoAspectRatio) {
-      // 竖向黑边
-      const ratio = playerAspectRatio / videoAspectRatio;
-      const normalizedX = x / playerElement.clientWidth;
-      const normalizedY = (y / playerElement.clientHeight - 0.5 * (ratio - 1)) / videoAspectRatio;
-      return {
-        x: Math.floor(normalizedX * 65536),
-        y: Math.floor(normalizedY * 65536),
-      };
+      // 竖向黑边（上下有黑边）
+      displayWidth = playerWidth;
+      displayHeight = playerWidth * videoAspectRatio;
+      offsetX = 0;
+      offsetY = (playerHeight - displayHeight) / 2;
     } else {
-      // 横向黑边
-      const ratio = videoAspectRatio / playerAspectRatio;
-      const normalizedX = (x / playerElement.clientWidth - 0.5 * (ratio - 1)) / videoAspectRatio;
-      const normalizedY = y / playerElement.clientHeight;
-      return {
-        x: Math.floor(normalizedX * 65536),
-        y: Math.floor(normalizedY * 65536),
-      };
+      // 横向黑边（左右有黑边）
+      displayWidth = playerHeight / videoAspectRatio;
+      displayHeight = playerHeight;
+      offsetX = (playerWidth - displayWidth) / 2;
+      offsetY = 0;
     }
+
+    // 将屏幕坐标转换为视频坐标
+    const videoX = x - offsetX;
+    const videoY = y - offsetY;
+
+    // 归一化到 0-1 范围
+    const normalizedX = videoX / displayWidth;
+    const normalizedY = videoY / displayHeight;
+
+    // 量化到 0-65535 范围（UE 期望的格式）
+    return {
+      x: Math.floor(normalizedX * 65536),
+      y: Math.floor(normalizedY * 65536),
+    };
   }
 
   /**
    * 归一化并量化有符号坐标
+   * 用于鼠标移动增量
    */
   private normalizeAndQuantizeSigned(playerElement: HTMLElement, x: number, y: number): { x: number; y: number } {
+    const video = playerElement.querySelector('video') as HTMLVideoElement | null;
+    const videoWidth = video ? video.videoWidth : playerElement.clientWidth;
+
+    // 归一化增量到 -32767 到 32767 范围
+    // 使用视频宽度作为参考，确保增量与视频分辨率匹配
     return {
-      x: Math.floor(x / playerElement.clientWidth * 32767),
-      y: Math.floor(y / playerElement.clientHeight * 32767),
+      x: Math.floor(x / videoWidth * 32767),
+      y: Math.floor(y / videoWidth * 32767),
     };
   }
 
