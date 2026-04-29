@@ -36,37 +36,21 @@ interface WebRtcPlayer {
 }
 
 /**
- * 全局 window 扩展（来自官方 app.js）
+ * 全局 window 扩展
  */
 declare global {
   interface Window {
     webRtcPlayer: new (options: { peerConnectionOptions?: RTCConfiguration }) => WebRtcPlayer;
     adapter: unknown;
-    // 官方 app.js 的全局变量和函数
-    webRtcPlayerObj: WebRtcPlayer | null;
     inputOptions?: {
       controlScheme?: number;
       suppressBrowserKeys?: boolean;
       fakeMouseWithTouches?: boolean;
-      hideBrowserCursor?: boolean;
     };
     ControlSchemeType?: {
       LockedMouse: number;
       HoveringMouse: number;
     };
-    // 官方函数
-    setupNormalizeAndQuantize: () => void;
-    registerHoveringMouseEvents: (playerElement: HTMLElement) => void;
-    registerLockedMouseEvents: (playerElement: HTMLElement) => void;
-    registerTouchEvents: (playerElement: HTMLElement) => void;
-    registerKeyboardEvents: () => void;
-    registerMouseEnterAndLeaveEvents: (playerElement: HTMLElement) => void;
-    sendInputData: (data: ArrayBuffer) => void;
-    toStreamerMessages: Map<string, { id: number; byteLength: number; structure: string[] }>;
-    toStreamerHandlers: Map<string, (...args: unknown[]) => void>;
-    emitCommand: (descriptor: unknown) => void;
-    emitUIInteraction: (descriptor: unknown) => void;
-    print_inputs: boolean;
   }
 }
 
@@ -74,7 +58,7 @@ declare global {
  * Legacy 适配器
  * 支持 UE 4.26 - 4.27
  *
- * 使用官方 webRtcPlayer.js 和 app.js 处理 WebRTC 连接和输入
+ * 使用官方 webRtcPlayer.js 处理 WebRTC 连接
  */
 export class LegacyAdapter extends BaseAdapter {
   private webSocket: WebSocket | null = null;
@@ -100,16 +84,16 @@ export class LegacyAdapter extends BaseAdapter {
   }
 
   /**
-   * 动态加载官方脚本
+   * 动态加载 webRtcPlayer.js 脚本
    */
-  private async loadScripts(): Promise<void> {
+  private async loadWebRtcPlayerScript(): Promise<void> {
     if (this.scriptLoaded && typeof window.webRtcPlayer === 'function') {
-      this.logger.debug('Scripts already loaded');
+      this.logger.debug('webRtcPlayer.js already loaded');
       return;
     }
 
     return new Promise((resolve, reject) => {
-      // 1. 加载 adapter.js
+      // 先加载 adapter.js（webRtcPlayer.js 依赖）
       const adapterScript = document.createElement('script');
       adapterScript.src = '/libs/adapter.js';
       adapterScript.type = 'text/javascript';
@@ -117,84 +101,33 @@ export class LegacyAdapter extends BaseAdapter {
       adapterScript.onload = () => {
         this.logger.info('adapter.js loaded');
 
-        // 2. 加载 webRtcPlayer.js
-        const webRtcScript = document.createElement('script');
-        webRtcScript.src = '/libs/webRtcPlayer.js';
-        webRtcScript.type = 'text/javascript';
+        // 然后加载 webRtcPlayer.js
+        const script = document.createElement('script');
+        script.src = '/libs/webRtcPlayer.js';
+        script.type = 'text/javascript';
 
-        webRtcScript.onload = () => {
-          this.logger.info('webRtcPlayer.js loaded');
-
-          // 3. 加载 app.js（包含输入处理）
-          const appScript = document.createElement('script');
-          appScript.src = '/libs/app.js';
-          appScript.type = 'text/javascript';
-
-          appScript.onload = () => {
-            this.scriptLoaded = true;
-            this.logger.info('app.js loaded successfully');
-            resolve();
-          };
-
-          appScript.onerror = () => {
-            const error = new Error('Failed to load app.js');
-            this.logger.error('app.js load failed', error);
-            reject(error);
-          };
-
-          document.head.appendChild(appScript);
+        script.onload = () => {
+          this.scriptLoaded = true;
+          this.logger.info('webRtcPlayer.js loaded successfully');
+          resolve();
         };
 
-        webRtcScript.onerror = () => {
-          const error = new Error('Failed to load webRtcPlayer.js');
-          this.logger.error('webRtcPlayer.js load failed', error);
+        script.onerror = () => {
+          const error = new Error('Failed to load webRtcPlayer.js from /libs/webRtcPlayer.js');
+          this.logger.error('Script load failed', error);
           reject(error);
         };
 
-        document.head.appendChild(webRtcScript);
+        document.head.appendChild(script);
       };
 
       adapterScript.onerror = () => {
-        const error = new Error('Failed to load adapter.js');
+        const error = new Error('Failed to load adapter.js from /libs/adapter.js');
         this.logger.error('adapter.js load failed', error);
         reject(error);
       };
 
       document.head.appendChild(adapterScript);
-    });
-  }
-
-  /**
-   * 初始化官方 app.js 的全局配置
-   */
-  private initAppJsGlobals(): void {
-    // 设置控制方案
-    if (!window.ControlSchemeType) {
-      window.ControlSchemeType = {
-        LockedMouse: 0,
-        HoveringMouse: 1,
-      };
-    }
-
-    // 设置输入选项
-    if (!window.inputOptions) {
-      window.inputOptions = {
-        controlScheme: this.config.mouseInteraction.HoveringMouse ? 1 : 0,
-        suppressBrowserKeys: true,
-        fakeMouseWithTouches: this.config.mouseInteraction.FakeMouseWithTouches ?? false,
-        hideBrowserCursor: false,
-      };
-    } else {
-      // 更新现有配置
-      window.inputOptions.controlScheme = this.config.mouseInteraction.HoveringMouse ? 1 : 0;
-    }
-
-    // 设置调试输出
-    window.print_inputs = this.config.debugMode ?? false;
-
-    this.logger.info('Initialized app.js globals:', {
-      controlScheme: window.inputOptions.controlScheme,
-      HoveringMouse: this.config.mouseInteraction.HoveringMouse,
     });
   }
 
@@ -207,13 +140,10 @@ export class LegacyAdapter extends BaseAdapter {
     this.reconnectAttempts = 0;
 
     try {
-      // 1. 加载官方脚本
-      await this.loadScripts();
+      // 1. 加载 webRtcPlayer.js
+      await this.loadWebRtcPlayerScript();
 
-      // 2. 初始化全局配置
-      this.initAppJsGlobals();
-
-      // 3. 创建 WebSocket 连接
+      // 2. 创建 WebSocket 连接
       await this.connectWebSocket();
 
       this.logger.info('Legacy adapter connected, waiting for signalling...');
@@ -272,6 +202,7 @@ export class LegacyAdapter extends BaseAdapter {
         this.webSocket = null;
 
         // 自动重连
+        this.logger.info(`Auto reconnect check: autoReconnect=${this.autoReconnect}, intentionallyClosed=${this.intentionallyClosed}, isReconnecting=${this.isReconnecting}`);
         if (this.autoReconnect && !this.intentionallyClosed) {
           this.scheduleReconnect();
         }
@@ -353,9 +284,6 @@ export class LegacyAdapter extends BaseAdapter {
       peerConnectionOptions: options,
     });
 
-    // 设置全局引用（app.js 需要）
-    window.webRtcPlayerObj = this.webRtcPlayer;
-
     this.logger.info('Created webRtcPlayer');
 
     // 设置回调
@@ -401,15 +329,6 @@ export class LegacyAdapter extends BaseAdapter {
           video.addEventListener('click', playOnInteraction);
         });
       }
-
-      // 视频初始化后，设置坐标归一化函数（官方 app.js）
-      if (typeof window.setupNormalizeAndQuantize === 'function') {
-        window.setupNormalizeAndQuantize();
-        this.logger.info('setupNormalizeAndQuantize called');
-      }
-
-      // 注册输入事件（使用官方函数）
-      this.registerInputEvents();
     };
 
     this.webRtcPlayer.onDataChannelConnected = () => {
@@ -470,60 +389,346 @@ export class LegacyAdapter extends BaseAdapter {
       this.logger.warn('Video container not available or video element missing');
     }
 
+    // 注册输入事件（使用官方方式的简化版）
+    this.registerInputEvents(this.webRtcPlayer.video);
+
     // 创建 offer
     this.webRtcPlayer.createOffer();
   }
 
   /**
-   * 注册输入事件（使用官方 app.js 函数）
+   * 注册输入事件（基于官方 app.js 的逻辑）
    */
-  private registerInputEvents(): void {
-    if (!this.webRtcPlayer?.video) {
-      this.logger.warn('Cannot register input events: video not ready');
-      return;
-    }
-
-    const videoElement = this.webRtcPlayer.video;
+  private registerInputEvents(videoElement: HTMLVideoElement): void {
     const hoverMouse = this.config.mouseInteraction.HoveringMouse;
 
-    this.logger.info('Registering input events using official app.js functions, HoveringMouse:', hoverMouse);
+    this.logger.info('Registering input events, HoveringMouse:', hoverMouse);
 
-    // 设置 sendInputData 函数（官方 app.js 需要）
-    window.sendInputData = (data: ArrayBuffer) => {
-      if (this.webRtcPlayer) {
-        this.webRtcPlayer.send(data);
+    if (hoverMouse) {
+      this.registerHoveringMouseEvents(videoElement);
+    } else {
+      this.registerLockedMouseEvents(videoElement);
+    }
+
+    this.registerKeyboardEvents();
+    this.registerTouchEvents(videoElement);
+  }
+
+  /**
+   * 发送输入数据
+   */
+  private sendInputData(data: ArrayBuffer): void {
+    if (this.webRtcPlayer) {
+      this.webRtcPlayer.send(data);
+    }
+  }
+
+  /**
+   * 注册悬停鼠标事件（基于官方 app.js）
+   */
+  private registerHoveringMouseEvents(playerElement: HTMLVideoElement): void {
+    // 悬停模式下显示默认光标
+    playerElement.style.cursor = 'default';
+
+    const emitMouseMove = (x: number, y: number, deltaX: number, deltaY: number) => {
+      const coord = this.normalizeAndQuantizeUnsigned(playerElement, x, y);
+      const delta = this.normalizeAndQuantizeSigned(playerElement, deltaX, deltaY);
+
+      const data = new DataView(new ArrayBuffer(9));
+      data.setUint8(0, MessageType.MouseMove);
+      data.setUint16(1, coord.x, true);
+      data.setUint16(3, coord.y, true);
+      data.setInt16(5, delta.x, true);
+      data.setInt16(7, delta.y, true);
+      this.sendInputData(data.buffer);
+    };
+
+    const emitMouseDown = (button: number, x: number, y: number) => {
+      const coord = this.normalizeAndQuantizeUnsigned(playerElement, x, y);
+      const data = new DataView(new ArrayBuffer(6));
+      data.setUint8(0, MessageType.MouseDown);
+      data.setUint8(1, button);
+      data.setUint16(2, coord.x, true);
+      data.setUint16(4, coord.y, true);
+      this.sendInputData(data.buffer);
+    };
+
+    const emitMouseUp = (button: number, x: number, y: number) => {
+      const coord = this.normalizeAndQuantizeUnsigned(playerElement, x, y);
+      const data = new DataView(new ArrayBuffer(6));
+      data.setUint8(0, MessageType.MouseUp);
+      data.setUint8(1, button);
+      data.setUint16(2, coord.x, true);
+      data.setUint16(4, coord.y, true);
+      this.sendInputData(data.buffer);
+    };
+
+    const emitMouseWheel = (delta: number, x: number, y: number) => {
+      const coord = this.normalizeAndQuantizeUnsigned(playerElement, x, y);
+      const data = new DataView(new ArrayBuffer(7));
+      data.setUint8(0, MessageType.MouseWheel);
+      // UE 期望的滚轮方向与浏览器相反
+      data.setInt16(1, -delta, true);
+      data.setUint16(3, coord.x, true);
+      data.setUint16(5, coord.y, true);
+      this.sendInputData(data.buffer);
+    };
+
+    playerElement.onmouseenter = () => {
+      const data = new Uint8Array([MessageType.MouseEnter]);
+      this.sendInputData(data.buffer);
+    };
+
+    playerElement.onmouseleave = () => {
+      const data = new Uint8Array([MessageType.MouseLeave]);
+      this.sendInputData(data.buffer);
+    };
+
+    playerElement.onmousemove = (e) => {
+      emitMouseMove(e.offsetX, e.offsetY, e.movementX, e.movementY);
+    };
+
+    playerElement.onmousedown = (e) => {
+      emitMouseDown(e.button, e.offsetX, e.offsetY);
+    };
+
+    playerElement.onmouseup = (e) => {
+      emitMouseUp(e.button, e.offsetX, e.offsetY);
+    };
+
+    playerElement.onwheel = (e) => {
+      e.preventDefault();
+      emitMouseWheel(e.deltaY, e.offsetX, e.offsetY);
+    };
+
+    playerElement.oncontextmenu = (e) => {
+      e.preventDefault();
+    };
+  }
+
+  /**
+   * 注册锁定鼠标事件
+   */
+  private registerLockedMouseEvents(playerElement: HTMLVideoElement): void {
+    playerElement.onclick = () => {
+      playerElement.requestPointerLock();
+    };
+
+    document.addEventListener('pointerlockchange', () => {
+      if (document.pointerLockElement === playerElement) {
+        const data = new Uint8Array([MessageType.MouseEnter]);
+        this.sendInputData(data.buffer);
+      } else {
+        const data = new Uint8Array([MessageType.MouseLeave]);
+        this.sendInputData(data.buffer);
+      }
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (document.pointerLockElement !== playerElement) return;
+
+      const data = new DataView(new ArrayBuffer(9));
+      data.setUint8(0, MessageType.MouseMove);
+      data.setUint16(1, 0, true);
+      data.setUint16(3, 0, true);
+      data.setInt16(5, e.movementX, true);
+      data.setInt16(7, e.movementY, true);
+      this.sendInputData(data.buffer);
+    });
+
+    document.addEventListener('mousedown', (e) => {
+      if (document.pointerLockElement !== playerElement) return;
+
+      const data = new DataView(new ArrayBuffer(6));
+      data.setUint8(0, MessageType.MouseDown);
+      data.setUint8(1, e.button);
+      data.setUint16(2, 0, true);
+      data.setUint16(4, 0, true);
+      this.sendInputData(data.buffer);
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      if (document.pointerLockElement !== playerElement) return;
+
+      const data = new DataView(new ArrayBuffer(6));
+      data.setUint8(0, MessageType.MouseUp);
+      data.setUint8(1, e.button);
+      data.setUint16(2, 0, true);
+      data.setUint16(4, 0, true);
+      this.sendInputData(data.buffer);
+    });
+  }
+
+  /**
+   * 注册键盘事件
+   */
+  private registerKeyboardEvents(): void {
+    const getKeyCode = (e: KeyboardEvent): number => {
+      if (e.keyCode === 16 && e.location === 2) return 25; // RightShift
+      if (e.keyCode === 17 && e.location === 2) return 26; // RightControl
+      if (e.keyCode === 18 && e.location === 2) return 27; // RightAlt
+      return e.keyCode;
+    };
+
+    const isBrowserKey = (keyCode: number): boolean => {
+      return (keyCode >= 112 && keyCode <= 123) || keyCode === 9;
+    };
+
+    document.addEventListener('keydown', (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (!this.webRtcPlayer) return;
+
+      const keyCode = getKeyCode(e);
+      const data = new Uint8Array([MessageType.KeyDown, keyCode, e.repeat ? 1 : 0]);
+      this.sendInputData(data.buffer);
+
+      if (isBrowserKey(keyCode)) {
+        e.preventDefault();
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (!this.webRtcPlayer) return;
+
+      const keyCode = getKeyCode(e);
+      const data = new Uint8Array([MessageType.KeyUp, keyCode]);
+      this.sendInputData(data.buffer);
+
+      if (isBrowserKey(keyCode)) {
+        e.preventDefault();
+      }
+    });
+
+    document.addEventListener('keypress', (e) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (!this.webRtcPlayer) return;
+
+      const data = new DataView(new ArrayBuffer(3));
+      data.setUint8(0, MessageType.KeyPress);
+      data.setUint16(1, e.charCode, true);
+      this.sendInputData(data.buffer);
+    });
+  }
+
+  /**
+   * 注册触摸事件
+   */
+  private registerTouchEvents(playerElement: HTMLVideoElement): void {
+    playerElement.ontouchstart = (e) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        const coord = this.normalizeAndQuantizeUnsigned(playerElement, touch.clientX, touch.clientY);
+        const data = new DataView(new ArrayBuffer(8));
+        data.setUint8(0, MessageType.TouchStart);
+        data.setUint8(1, i);
+        data.setUint16(2, coord.x, true);
+        data.setUint16(4, coord.y, true);
+        data.setUint8(6, e.touches.length);
+        data.setUint8(7, e.changedTouches.length);
+        this.sendInputData(data.buffer);
       }
     };
 
-    // 注册鼠标进入/离开事件
-    if (typeof window.registerMouseEnterAndLeaveEvents === 'function') {
-      window.registerMouseEnterAndLeaveEvents(videoElement);
-      this.logger.info('registerMouseEnterAndLeaveEvents called');
-    }
-
-    // 注册鼠标事件（悬停或锁定）
-    if (hoverMouse) {
-      if (typeof window.registerHoveringMouseEvents === 'function') {
-        window.registerHoveringMouseEvents(videoElement);
-        this.logger.info('registerHoveringMouseEvents called');
+    playerElement.ontouchend = (e) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        const coord = this.normalizeAndQuantizeUnsigned(playerElement, touch.clientX, touch.clientY);
+        const data = new DataView(new ArrayBuffer(8));
+        data.setUint8(0, MessageType.TouchEnd);
+        data.setUint8(1, i);
+        data.setUint16(2, coord.x, true);
+        data.setUint16(4, coord.y, true);
+        data.setUint8(6, e.touches.length);
+        data.setUint8(7, e.changedTouches.length);
+        this.sendInputData(data.buffer);
       }
+    };
+
+    playerElement.ontouchmove = (e) => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        const coord = this.normalizeAndQuantizeUnsigned(playerElement, touch.clientX, touch.clientY);
+        const data = new DataView(new ArrayBuffer(8));
+        data.setUint8(0, MessageType.TouchMove);
+        data.setUint8(1, i);
+        data.setUint16(2, coord.x, true);
+        data.setUint16(4, coord.y, true);
+        data.setUint8(6, e.touches.length);
+        data.setUint8(7, e.changedTouches.length);
+        this.sendInputData(data.buffer);
+      }
+    };
+  }
+
+  /**
+   * 归一化并量化无符号坐标（与官方 app.js 一致）
+   * 将屏幕坐标转换为 UE 期望的归一化坐标（0-65535）
+   */
+  private normalizeAndQuantizeUnsigned(playerElement: HTMLElement, x: number, y: number): { x: number; y: number } {
+    const playerWidth = playerElement.clientWidth;
+    const playerHeight = playerElement.clientHeight;
+    const video = playerElement.querySelector('video') as HTMLVideoElement | null;
+    const videoWidth = video ? video.videoWidth : playerWidth;
+    const videoHeight = video ? video.videoHeight : playerHeight;
+
+    const playerAspectRatio = playerHeight / playerWidth;
+    const videoAspectRatio = videoHeight / videoWidth;
+
+    // 与官方 app.js 的 normalizeAndQuantizeUnsigned 完全一致
+    if (playerAspectRatio > videoAspectRatio) {
+      // 竖向黑边
+      const ratio = playerAspectRatio / videoAspectRatio;
+      const normalizedX = x / playerWidth;
+      const normalizedY = ratio * (y / playerHeight - 0.5) + 0.5;
+      return {
+        x: Math.floor(normalizedX * 65536),
+        y: Math.floor(normalizedY * 65536),
+      };
     } else {
-      if (typeof window.registerLockedMouseEvents === 'function') {
-        window.registerLockedMouseEvents(videoElement);
-        this.logger.info('registerLockedMouseEvents called');
-      }
+      // 横向黑边
+      const ratio = videoAspectRatio / playerAspectRatio;
+      const normalizedX = ratio * (x / playerWidth - 0.5) + 0.5;
+      const normalizedY = y / playerHeight;
+      return {
+        x: Math.floor(normalizedX * 65536),
+        y: Math.floor(normalizedY * 65536),
+      };
     }
+  }
 
-    // 注册触摸事件
-    if (typeof window.registerTouchEvents === 'function') {
-      window.registerTouchEvents(videoElement);
-      this.logger.info('registerTouchEvents called');
-    }
+  /**
+   * 归一化并量化有符号坐标
+   * 用于鼠标移动增量（与官方 app.js 一致）
+   */
+  private normalizeAndQuantizeSigned(playerElement: HTMLElement, x: number, y: number): { x: number; y: number } {
+    const playerWidth = playerElement.clientWidth;
+    const playerHeight = playerElement.clientHeight;
+    const video = playerElement.querySelector('video') as HTMLVideoElement | null;
+    const videoWidth = video ? video.videoWidth : playerWidth;
+    const videoHeight = video ? video.videoHeight : playerHeight;
 
-    // 注册键盘事件
-    if (typeof window.registerKeyboardEvents === 'function') {
-      window.registerKeyboardEvents();
-      this.logger.info('registerKeyboardEvents called');
+    const playerAspectRatio = playerHeight / playerWidth;
+    const videoAspectRatio = videoHeight / videoWidth;
+
+    // 与官方 app.js 的 normalizeAndQuantizeSigned 完全一致
+    if (playerAspectRatio > videoAspectRatio) {
+      // 竖向黑边
+      const ratio = playerAspectRatio / videoAspectRatio;
+      return {
+        x: Math.floor(x / (0.5 * playerWidth) * 32767),
+        y: Math.floor((ratio * y) / (0.5 * playerHeight) * 32767),
+      };
+    } else {
+      // 横向黑边
+      const ratio = videoAspectRatio / playerAspectRatio;
+      return {
+        x: Math.floor((ratio * x) / (0.5 * playerWidth) * 32767),
+        y: Math.floor(y / (0.5 * playerHeight) * 32767),
+      };
     }
   }
 
@@ -616,7 +821,6 @@ export class LegacyAdapter extends BaseAdapter {
         this.webRtcPlayer.video.parentNode.removeChild(this.webRtcPlayer.video);
       }
       this.webRtcPlayer = null;
-      window.webRtcPlayerObj = null;
     }
 
     // 关闭 WebSocket
@@ -689,7 +893,6 @@ export class LegacyAdapter extends BaseAdapter {
         this.webRtcPlayer.video.parentNode.removeChild(this.webRtcPlayer.video);
       }
       this.webRtcPlayer = null;
-      window.webRtcPlayerObj = null;
     }
     if (this.webSocket) {
       this.webSocket.close();
@@ -739,14 +942,6 @@ export class LegacyAdapter extends BaseAdapter {
       return false;
     }
 
-    // 使用官方 emitCommand 函数
-    if (typeof window.emitCommand === 'function') {
-      window.emitCommand(command);
-      this.logger.info('Sending command to UE4 via emitCommand:', command);
-      return true;
-    }
-
-    // 回退：直接发送 JSON
     const message = JSON.stringify(command);
     this.webRtcPlayer.send(message);
     this.logger.info('Sending command to UE4:', command);
@@ -767,3 +962,45 @@ export class LegacyAdapter extends BaseAdapter {
     return PROTOCOL_VERSION_MAP[protocolVersion];
   }
 }
+
+/**
+ * UE 4.x 输入消息类型（与官方 app.js 一致）
+ */
+const MessageType = {
+  // Control Messages
+  IFrameRequest: 0,
+  RequestQualityControl: 1,
+  MaxFpsRequest: 2,
+  AverageBitrateRequest: 3,
+  StartStreaming: 4,
+  StopStreaming: 5,
+  LatencyTest: 6,
+  RequestInitialSettings: 7,
+
+  // Generic Input Messages
+  UIInteraction: 50,
+  Command: 51,
+
+  // Keyboard Input Messages
+  KeyDown: 60,
+  KeyUp: 61,
+  KeyPress: 62,
+
+  // Mouse Input Messages
+  MouseEnter: 70,
+  MouseLeave: 71,
+  MouseDown: 72,
+  MouseUp: 73,
+  MouseMove: 74,
+  MouseWheel: 75,
+
+  // Touch Input Messages
+  TouchStart: 80,
+  TouchEnd: 81,
+  TouchMove: 82,
+
+  // Gamepad Input Messages
+  GamepadButtonPressed: 90,
+  GamepadButtonReleased: 91,
+  GamepadAnalog: 92,
+} as const;
