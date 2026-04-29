@@ -9,9 +9,9 @@ const showPixelStreaming = ref(true)
 const debugMode = ref(true)
 const showDemoPanel = ref(true)  // 控制演示面板显示
 
-// 像素流配置
-const signallingUrl = 'ws://localhost:1444'
-const mcpBridgeUrl = 'http://localhost:8080'
+// 像素流配置（从环境变量读取）
+const signallingUrl = import.meta.env.VITE_PIXEL_STREAMING_SIGNALLING_URL || 'ws://localhost:8888'
+const mcpBridgeUrl = import.meta.env.VITE_PIXEL_STREAMING_MCP_BRIDGE_URL || 'http://localhost:8080'
 const ueVersion = ref<UEVersion | undefined>(undefined)  // 手动指定 UE 版本，undefined 表示自动检测
 
 const handleClose = () => {
