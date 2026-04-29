@@ -1,0 +1,210 @@
+/**
+ * 共享 Markdown 样式
+ * 用于 ChatMessage.vue 和 QwenPawChat.vue
+ */
+
+/* Markdown 样式 - 可通过 CSS 变量定制 */
+.agent-markdown {
+  /* 标题样式 */
+  --md-h1-size: 22px;
+  --md-h2-size: 20px;
+  --md-h3-size: 18px;
+  --md-h4-size: 17px;
+  --md-h5-size: 17px;
+  --md-h6-size: 16px;
+
+  /* 文本样式 */
+  --md-text-size: 17px;
+  --md-line-height: 1.5;
+  --md-code-size: 15px;
+  --md-pre-code-size: 14px;
+
+  /* 颜色 */
+  --md-text-color: rgba(255, 255, 255, 0.85);
+  --md-text-secondary: rgba(255, 255, 255, 0.65);
+  --md-text-tertiary: rgba(255, 255, 255, 0.45);
+  --md-link-color: #f07e26;
+  --md-link-hover: #d96c18;
+  --md-code-bg: rgba(240, 126, 38, 0.15);
+  --md-code-color: #f07e26;
+  --md-pre-bg: rgba(0, 0, 0, 0.4);
+  --md-pre-code-color: #f8f8f2;
+  --md-blockquote-border: #f07e26;
+  --md-blockquote-bg: rgba(240, 126, 38, 0.08);
+  --md-table-border: rgba(255, 255, 255, 0.12);
+  --md-table-header-bg: rgba(255, 255, 255, 0.08);
+  --md-table-stripe-bg: rgba(255, 255, 255, 0.03);
+  --md-hr-border: rgba(255, 255, 255, 0.15);
+}
+
+/* 标题 */
+.agent-markdown :deep(h1) {
+  font-size: var(--md-h1-size);
+  margin: 8px 0 3px;
+  color: var(--md-text-color);
+}
+
+.agent-markdown :deep(h2) {
+  font-size: var(--md-h2-size);
+  margin: 8px 0 3px;
+  color: var(--md-text-color);
+}
+
+.agent-markdown :deep(h3) {
+  font-size: var(--md-h3-size);
+  margin: 8px 0 3px;
+  color: var(--md-text-color);
+}
+
+.agent-markdown :deep(h4) {
+  font-size: var(--md-h4-size);
+  margin: 8px 0 3px;
+  color: var(--md-text-color);
+}
+
+.agent-markdown :deep(h5) {
+  font-size: var(--md-h5-size);
+  margin: 8px 0 3px;
+  color: var(--md-text-secondary);
+}
+
+.agent-markdown :deep(h6) {
+  font-size: var(--md-h6-size);
+  margin: 8px 0 3px;
+  color: var(--md-text-tertiary);
+}
+
+/* 段落 */
+.agent-markdown :deep(p) {
+  margin: 5px 0;
+  line-height: var(--md-line-height);
+  color: var(--md-text-color);
+}
+
+.agent-markdown :deep(p:first-child) {
+  margin-top: 0;
+}
+
+.agent-markdown :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+/* 列表 */
+.agent-markdown :deep(ul),
+.agent-markdown :deep(ol) {
+  margin: 5px 0;
+  padding-left: 26px;
+  color: var(--md-text-color);
+}
+
+.agent-markdown :deep(li) {
+  margin: 3px 0;
+  line-height: 1.4;
+}
+
+/* 引用块 */
+.agent-markdown :deep(blockquote) {
+  margin: 5px 0;
+  padding: 5px 15px;
+  border-left: 4px solid var(--md-blockquote-border);
+  background: var(--md-blockquote-bg);
+  color: var(--md-text-color);
+  border-radius: 0 5px 5px 0;
+}
+
+/* 行内代码 */
+.agent-markdown :deep(code) {
+  background: var(--md-code-bg);
+  padding: 0 5px;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: var(--md-code-size);
+  color: var(--md-code-color);
+}
+
+/* 代码块 */
+.agent-markdown :deep(pre) {
+  background: var(--md-pre-bg);
+  padding: 10px 15px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 5px 0;
+  border: 1px solid var(--md-table-border);
+}
+
+.agent-markdown :deep(pre code) {
+  background: none;
+  padding: 0;
+  font-size: var(--md-pre-code-size);
+  line-height: 1.5;
+  color: var(--md-pre-code-color);
+}
+
+/* 链接 */
+.agent-markdown :deep(a) {
+  color: var(--md-link-color);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.agent-markdown :deep(a:hover) {
+  color: var(--md-link-hover);
+  text-decoration: underline;
+}
+
+/* 强调 */
+.agent-markdown :deep(strong),
+.agent-markdown :deep(b) {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.agent-markdown :deep(em),
+.agent-markdown :deep(i) {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 表格 */
+.agent-markdown :deep(table) {
+  border-collapse: collapse;
+  margin: 5px 0;
+  width: 100%;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.agent-markdown :deep(th),
+.agent-markdown :deep(td) {
+  border: 1px solid var(--md-table-border);
+  padding: 5px 10px;
+  text-align: left;
+}
+
+.agent-markdown :deep(th) {
+  background: var(--md-table-header-bg);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.agent-markdown :deep(td) {
+  color: var(--md-text-color);
+}
+
+.agent-markdown :deep(tr:nth-child(even)) {
+  background: var(--md-table-stripe-bg);
+}
+
+/* 分隔线 */
+.agent-markdown :deep(hr) {
+  border: none;
+  border-top: 1px solid var(--md-hr-border);
+  margin: 10px 0;
+}
+
+/* 图片 */
+.agent-markdown :deep(img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+}

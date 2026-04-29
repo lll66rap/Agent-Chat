@@ -1,0 +1,122 @@
+/**
+ * QwenPaw Chat CSS 变量
+ * 支持主题定制
+ */
+
+:root {
+  /* ===== 聊天窗口 ===== */
+  --chat-width: 1024px;
+  --chat-max-height: 640px;
+  --chat-min-height: 256px;
+  --chat-border-radius: 16px;
+  --chat-shadow: 0 5px 26px rgba(0, 0, 0, 0.5);
+  --chat-shadow-dragging: 0 10px 40px rgba(0, 0, 0, 0.6);
+
+  /* ===== 颜色 ===== */
+  --chat-bg-start: rgba(15, 15, 20, 0.95);
+  --chat-bg-end: rgba(20, 20, 30, 0.9);
+  --chat-border: rgba(255, 255, 255, 0.1);
+
+  /* 文本颜色 */
+  --chat-text-primary: rgba(255, 255, 255, 0.85);
+  --chat-text-secondary: rgba(255, 255, 255, 0.5);
+  --chat-text-tertiary: rgba(255, 255, 255, 0.4);
+  --chat-text-highlight: #fff;
+
+  /* 品牌色 */
+  --chat-brand-start: #667eea;
+  --chat-brand-end: #764ba2;
+  --chat-brand-gradient: linear-gradient(135deg, var(--chat-brand-start) 0%, var(--chat-brand-end) 100%);
+  --chat-accent: #f07e26;
+  --chat-accent-hover: #d96c18;
+
+  /* 状态颜色 */
+  --chat-success: #4ade80;
+  --chat-warning: #fbbf24;
+  --chat-error: #f87171;
+  --chat-error-bg: rgba(239, 68, 68, 0.1);
+  --chat-error-border: rgba(239, 68, 68, 0.3);
+  --chat-text-error-badge: #ff4d4f;
+
+  /* ===== 间距 ===== */
+  --chat-padding-xs: 5px;
+  --chat-padding-sm: 10px;
+  --chat-padding-md: 15px;
+  --chat-padding-lg: 20px;
+  --chat-padding-xl: 26px;
+  --chat-gap: 15px;
+  --chat-message-gap: 26px;
+
+  /* ===== 尺寸 ===== */
+  --chat-avatar-sm: 36px;
+  --chat-avatar-md: 41px;
+  --chat-input-height: 46px;
+  --chat-scroll-btn-size: 41px;
+  --chat-close-btn-size: 31px;
+
+  /* ===== 字体 ===== */
+  --chat-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --chat-font-size-xs: 10px;
+  --chat-font-size-sm: 14px;
+  --chat-font-size-md: 15px;
+  --chat-font-size-lg: 17px;
+  --chat-font-size-xl: 18px;
+  --chat-font-weight-normal: 500;
+  --chat-font-weight-bold: 600;
+
+  /* ===== 圆角 ===== */
+  --chat-radius-sm: 4px;
+  --chat-radius-md: 5px;
+  --chat-radius-lg: 8px;
+  --chat-radius-xl: 10px;
+  --chat-radius-full: 50%;
+
+  /* ===== 过渡 ===== */
+  --chat-transition-fast: 0.2s;
+  --chat-transition-normal: 0.3s;
+
+  /* ===== 消息气泡 ===== */
+  --chat-bubble-user-bg: var(--chat-brand-gradient);
+  --chat-bubble-user-radius: 20px 10px 20px 20px;
+  --chat-bubble-assistant-bg: rgba(255, 255, 255, 0.08);
+  --chat-bubble-assistant-border: rgba(255, 255, 255, 0.1);
+  --chat-bubble-assistant-radius: 10px 20px 20px 20px;
+
+  /* ===== 输入区域 ===== */
+  --chat-input-bg: rgba(0, 0, 0, 0.4);
+  --chat-input-bg-focus: rgba(0, 0, 0, 0.6);
+  --chat-input-border: rgba(255, 255, 255, 0.15);
+  --chat-input-border-focus: var(--chat-brand-start);
+
+  /* ===== 滚动条 ===== */
+  --chat-scrollbar-width: 8px;
+  --chat-scrollbar-track: rgba(255, 255, 255, 0.05);
+  --chat-scrollbar-thumb: rgba(255, 255, 255, 0.2);
+
+  /* ===== Markdown 表格 ===== */
+  --chat-table-border: rgba(255, 255, 255, 0.12);
+  --chat-table-header-bg: rgba(255, 255, 255, 0.08);
+  --chat-table-stripe-bg: rgba(255, 255, 255, 0.03);
+  --chat-hr-border: rgba(255, 255, 255, 0.15);
+}
+
+/* 暗色模式（默认） */
+.dark-mode {
+  --chat-bg-start: rgba(15, 15, 20, 0.95);
+  --chat-bg-end: rgba(20, 20, 30, 0.9);
+  --chat-text-primary: rgba(255, 255, 255, 0.85);
+  --chat-text-secondary: rgba(255, 255, 255, 0.5);
+}
+
+/* 亮色模式（可选） */
+.light-mode {
+  --chat-bg-start: rgba(255, 255, 255, 0.95);
+  --chat-bg-end: rgba(245, 245, 250, 0.9);
+  --chat-text-primary: rgba(0, 0, 0, 0.85);
+  --chat-text-secondary: rgba(0, 0, 0, 0.5);
+  --chat-border: rgba(0, 0, 0, 0.1);
+  --chat-bubble-assistant-bg: rgba(0, 0, 0, 0.05);
+  --chat-bubble-assistant-border: rgba(0, 0, 0, 0.1);
+  --chat-input-bg: rgba(0, 0, 0, 0.05);
+  --chat-input-bg-focus: rgba(0, 0, 0, 0.08);
+}
