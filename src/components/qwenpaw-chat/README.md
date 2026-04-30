@@ -8,6 +8,7 @@
 - **SSE 流式响应** - 实时消息流，支持思考阶段显示
 - **Markdown 渲染** - 支持标题、列表、代码块、表格、LaTeX 数学公式
 - **会话管理** - 自动保存历史到 localStorage，支持 `/clear` 命令
+- **本地命令拦截** - 特定关键词前端直接执行，不发送到后端
 - **响应式设计** - 移动端友好，自适应布局
 - **主题系统** - 亮色/暗色模式支持
 - **可拖拽窗口** - 自由拖动聊天窗口位置
@@ -188,6 +189,107 @@ pixelStreamingRef.value.sendCommand({ ... })
 
 ---
 
+### 本地命令拦截
+
+QwenPawChat 支持本地命令拦截功能，特定关键词会在前端直接执行，不发送到后端 API。适用于页面跳转、视图切换等前端操作。
+
+#### 基本用法
+
+```vue
+<template>
+  <QwenPawChat
+    :local-commands="localCommands"
+    @local-command="onLocalCommand"
+  />
+</template>
+
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+import type { LocalCommand } from '@/components/qwenpaw-chat'
+
+const router = useRouter()
+
+const localCommands: LocalCommand[] = [
+  {
+    pattern: '道路总览',
+    description: '跳转到道路总览页面',
+    reply: '已为您跳转到 **道路总览** 页面',
+    action: () => router.push('/road-overview')
+  },
+  {
+    pattern: '地图视图',
+    reply: '正在切换到地图视图...',
+    action: () => router.push('/map')
+  },
+  {
+    pattern: '帮助',
+    reply: `**可用命令列表**
+
+| 命令 | 说明 |
+|------|------|
+| 道路总览 | 查看道路总览页面 |
+| 地图视图 | 切换到地图视图 |
+| 帮助 | 显示帮助信息 |`
+  },
+  {
+    // 正则表达式匹配
+    pattern: /^查看\s*(.+)$/,
+    reply: (msg) => `正在查看：**${msg.replace(/^查看\s*/, '')}**`,
+    action: (msg) => console.log('查看:', msg)
+  }
+]
+
+const onLocalCommand = (command: LocalCommand, message: string) => {
+  console.log('本地命令执行:', command.description, message)
+}
+</script>
+```
+
+#### LocalCommand 类型定义
+
+```typescript
+interface LocalCommand {
+  /** 命令关键词（支持字符串精确匹配或正则表达式） */
+  pattern: string | RegExp
+  /** 命令描述（用于日志和调试） */
+  description?: string
+  /** 回复消息模板，支持字符串或函数动态生成 */
+  reply: string | ((message: string) => string)
+  /** 执行的操作（可选），支持同步或异步函数 */
+  action?: (message: string) => void | Promise<void>
+}
+```
+
+#### 匹配规则
+
+| 类型 | 示例 | 说明 |
+|------|------|------|
+| 字符串精确匹配 | `pattern: '道路总览'` | 用户输入必须完全匹配 |
+| 正则表达式匹配 | `pattern: /^查看\s*(.+)$/` | 支持捕获组，动态回复 |
+
+#### 执行流程
+
+```
+用户输入消息
+    ↓
+检查是否为本地命令
+    ↓ 是
+显示用户消息 → 执行 action → 生成回复 → 触发 @local-command
+    ↓ 否
+发送到后端 API → 流式显示回复
+```
+
+#### 特性
+
+- ✅ **字符串精确匹配** - `pattern: '道路总览'`
+- ✅ **正则表达式匹配** - `pattern: /^查看\s*(.+)$/`
+- ✅ **动态回复** - `reply` 支持函数生成
+- ✅ **异步操作** - `action` 支持 async/await
+- ✅ **事件通知** - `@local-command` emit 事件
+- ✅ **历史记录** - 本地命令消息保存到历史
+
+---
+
 ### 在任意组件中使用（推荐）
 
 使用 `usePixelStreaming` composable，可以在 PixelStreaming 组件的任意后代组件中访问像素流服务：
@@ -312,6 +414,8 @@ import {
   MCPCommand,
   MCPResponse,
   ConnectionStatus,
+  LocalCommand,             // 本地命令类型
+  LocalCommandMatch,        // 本地命令匹配结果
   
   // 错误处理
   PixelStreamingError,
