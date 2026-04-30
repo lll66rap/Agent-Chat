@@ -91,6 +91,8 @@ export type {
   WindowPosition,
   DragState,
   QwenPawChatProps,
+  LocalCommand,
+  LocalCommandMatch,
 } from './src/chat-types'
 
 // Chat 常量

@@ -242,4 +242,41 @@ export interface QwenPawChatProps {
   showCopy?: boolean
   /** 是否开启调试日志 */
   debug?: boolean
+  /** 本地命令配置（拦截特定消息，前端直接执行操作） */
+  localCommands?: LocalCommand[]
+}
+
+/**
+ * 本地命令处理器
+ * 用于拦截特定消息，在前端直接执行操作而不发送到后端
+ *
+ * @example
+ * ```typescript
+ * const command: LocalCommand = {
+ *   pattern: '道路总览',
+ *   description: '跳转到道路总览页面',
+ *   reply: '已为您跳转到**道路总览**页面',
+ *   action: () => router.push('/road-overview')
+ * }
+ * ```
+ */
+export interface LocalCommand {
+  /** 命令关键词（支持字符串精确匹配或正则表达式） */
+  pattern: string | RegExp
+  /** 命令描述（用于日志和调试） */
+  description?: string
+  /** 回复消息模板，支持字符串或函数动态生成 */
+  reply: string | ((message: string) => string)
+  /** 执行的操作（可选），支持同步或异步函数 */
+  action?: (message: string) => void | Promise<void>
+}
+
+/**
+ * 本地命令匹配结果
+ */
+export interface LocalCommandMatch {
+  /** 是否匹配到本地命令 */
+  matched: boolean
+  /** 匹配到的命令（如果 matched 为 true） */
+  command?: LocalCommand
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import QwenPawChat, { PixelStreaming } from '@/components/qwenpaw-chat'
+import QwenPawChat, { PixelStreaming, type LocalCommand } from '@/components/qwenpaw-chat'
 import type { UEVersion } from '@/components/qwenpaw-chat/src/pixelstreaming/types'
 import PixelStreamingDemo from '@/components/PixelStreamingDemo.vue'
 import { ref } from 'vue'
@@ -14,12 +14,63 @@ const signallingUrl = import.meta.env.VITE_PIXEL_STREAMING_SIGNALLING_URL || 'ws
 const mcpBridgeUrl = import.meta.env.VITE_PIXEL_STREAMING_MCP_BRIDGE_URL || 'http://localhost:8080'
 const ueVersion = ref<UEVersion | undefined>(undefined)  // 手动指定 UE 版本，undefined 表示自动检测
 
+// 本地命令配置示例
+const localCommands: LocalCommand[] = [
+  {
+    pattern: '道路总览',
+    description: '跳转到道路总览页面',
+    reply: '已为您跳转到 **道路总览** 页面',
+    action: () => {
+      console.log('执行：跳转到道路总览')
+      // 实际使用时：router.push('/road-overview')
+    }
+  },
+  {
+    pattern: '地图视图',
+    description: '切换到地图视图',
+    reply: '正在切换到 **地图视图**...',
+    action: () => {
+      console.log('执行：切换地图视图')
+    }
+  },
+  {
+    pattern: '帮助',
+    description: '显示帮助信息',
+    reply: `**可用命令列表**
+
+| 命令 | 说明 |
+|------|------|
+| 道路总览 | 查看道路总览页面 |
+| 地图视图 | 切换到地图视图 |
+| 帮助 | 显示此帮助信息 |
+| 查看 <名称> | 查看指定内容 |
+
+> 💡 提示：本地命令不会发送到后端`
+  },
+  {
+    pattern: /^查看\s*(.+)$/,
+    description: '查看指定内容（正则匹配）',
+    reply: (msg) => `正在查看：**${msg.replace(/^查看\s*/, '')}**`,
+    action: (msg) => {
+      console.log('查看内容:', msg.replace(/^查看\s*/, ''))
+    }
+  }
+]
+
 const handleClose = () => {
   showChat.value = false
   // 3秒后重新显示（演示用）
   setTimeout(() => {
     showChat.value = true
   }, 3000)
+}
+
+const handleLocalCommand = (command: LocalCommand, message: string) => {
+  console.log('📍 本地命令执行:', {
+    pattern: command.pattern,
+    description: command.description,
+    message
+  })
 }
 
 const handlePixelStreamingCommand = (command: unknown) => {
@@ -90,6 +141,8 @@ const handlePixelStreamingResponse = (response: unknown) => {
       @close="handleClose"
       :draggable="true"
       :show-copy="true"
+      :local-commands="localCommands"
+      @local-command="handleLocalCommand"
     />
 
     <div class="demo-info">
@@ -116,6 +169,7 @@ const handlePixelStreamingResponse = (response: unknown) => {
           <li>✅ 命令ID匹配响应</li>
           <li>✅ 调试面板</li>
           <li>✅ usePixelStreaming composable</li>
+          <li>✅ 本地命令拦截（前端直接执行）</li>
         </ul>
       </div>
     </div>

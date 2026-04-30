@@ -52,7 +52,7 @@ import {
   stopChat,
   getSessionId,
 } from '../api'
-import type { MessageItem } from '../chat-types'
+import type { MessageItem, LocalCommand, LocalCommandMatch } from '../chat-types'
 import { createChatLogger } from '../utils/logger'
 import { rafThrottle } from '../utils/performance'
 
@@ -64,6 +64,10 @@ export interface UseChatOptions {
   showCopy?: boolean
   /** 是否启用调试日志 */
   debug?: boolean
+  /** 本地命令列表（拦截特定消息，前端直接执行操作） */
+  localCommands?: LocalCommand[]
+  /** 本地命令执行回调 */
+  onLocalCommand?: (command: LocalCommand, message: string) => void
 }
 
 /**
@@ -72,7 +76,7 @@ export interface UseChatOptions {
  * @returns 聊天状态和方法
  */
 export function useChat(options: UseChatOptions = {}) {
-  const { debug = false } = options
+  const { debug = false, localCommands = [], onLocalCommand } = options
   const logger = createChatLogger('useChat', debug)
 
   // Markdown 渲染器（单例）
@@ -197,6 +201,71 @@ export function useChat(options: UseChatOptions = {}) {
   }
 
   /**
+   * 匹配本地命令
+   * @param message - 用户消息
+   * @returns 匹配结果
+   */
+  const matchLocalCommand = (message: string): LocalCommandMatch => {
+    if (!localCommands?.length) return { matched: false }
+
+    const trimmedMessage = message.trim()
+    for (const cmd of localCommands) {
+      if (typeof cmd.pattern === 'string') {
+        // 字符串精确匹配
+        if (trimmedMessage === cmd.pattern) {
+          return { matched: true, command: cmd }
+        }
+      } else {
+        // 正则表达式匹配
+        if (cmd.pattern.test(trimmedMessage)) {
+          return { matched: true, command: cmd }
+        }
+      }
+    }
+    return { matched: false }
+  }
+
+  /**
+   * 执行本地命令
+   * @param message - 用户消息
+   * @param command - 匹配到的命令
+   */
+  const executeLocalCommand = async (message: string, command: LocalCommand) => {
+    logger.info('Executing local command:', command.description || command.pattern)
+
+    // 1. 添加用户消息到列表
+    list.value.push({ content: message, role: 'user' })
+    saveMessageToHistory(message, 'user')
+    nextTick(() => scrollToBottom())
+
+    // 2. 执行操作（如果有）
+    if (command.action) {
+      try {
+        await command.action(message)
+      } catch (e) {
+        logger.error('Local command action failed:', e)
+      }
+    }
+
+    // 3. 生成回复
+    const replyText = typeof command.reply === 'function'
+      ? command.reply(message)
+      : command.reply
+
+    const md = getMarkdown()
+    const renderedReply = md.render(replyText)
+
+    // 4. 添加回复到列表
+    list.value.push({ content: renderedReply, role: 'assistant' })
+    saveMessageToHistory(replyText, 'assistant')
+
+    // 5. 触发回调
+    onLocalCommand?.(command, message)
+
+    nextTick(() => scrollToBottom())
+  }
+
+  /**
    * 核心发送逻辑
    */
   const sendToQwenPawInternal = async (userMessage: string) => {
@@ -296,6 +365,14 @@ export function useChat(options: UseChatOptions = {}) {
     if (isClearCommand(value)) {
       clearLocalHistory()
       await sendToQwenPawInternal('/clear')
+      sendFlag.value = false
+      return
+    }
+
+    // 检查本地命令
+    const cmdMatch = matchLocalCommand(value)
+    if (cmdMatch.matched && cmdMatch.command) {
+      await executeLocalCommand(value, cmdMatch.command)
       sendFlag.value = false
       return
     }

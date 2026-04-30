@@ -11,6 +11,7 @@ import ChatMessage from './components/ChatMessage.vue'
 import ChatInput from './components/ChatInput.vue'
 import { WINDOW_DEFAULTS, MESSAGE_CONFIG } from './chat-constants'
 import { setDebugMode } from './api'
+import type { LocalCommand } from './chat-types'
 import 'katex/dist/katex.min.css'
 
 defineOptions({ name: 'QwenPawChat' })
@@ -37,11 +38,15 @@ const props = defineProps<{
   showCopy?: boolean
   /** 是否打印日志 */
   debug?: boolean
+  /** 本地命令配置（拦截特定消息，前端直接执行操作） */
+  localCommands?: LocalCommand[]
 }>()
 
 // Emits 定义
 const emit = defineEmits<{
   close: []
+  /** 本地命令执行事件 */
+  'local-command': [command: LocalCommand, message: string]
 }>()
 
 // 默认值
@@ -85,7 +90,11 @@ const {
   getMarkdown: _getMarkdown,
 } = useChat({
   showCopy: isShowCopy,
-  debug: isDebug
+  debug: isDebug,
+  localCommands: props.localCommands,
+  onLocalCommand: (command, message) => {
+    emit('local-command', command, message)
+  }
 })
 
 // 加载会话历史
