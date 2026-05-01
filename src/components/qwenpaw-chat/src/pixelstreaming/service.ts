@@ -225,7 +225,18 @@ export class PixelStreamingService {
     this.pendingCommandId = command.commandId;
     this.pendingCommandSource = source;
 
-    // 设置超时定时器
+    // 先发送命令，发送成功后再设置超时定时器
+    const sent = this.adapter.sendCommand(command);
+
+    if (!sent) {
+      // 发送失败，清除状态，不设置超时定时器
+      this.logger.error(`Failed to send command ${command.commandId}`);
+      this.pendingCommandId = null;
+      this.pendingCommandSource = null;
+      return false;
+    }
+
+    // 发送成功，设置超时定时器
     const currentCommandId = command.commandId;
     this.pendingCommandTimer = setTimeout(() => {
       // 只有当前命令ID匹配时才触发超时
@@ -243,7 +254,7 @@ export class PixelStreamingService {
       }
     }, this.commandTimeout);
 
-    return this.adapter.sendCommand(command);
+    return true;
   }
 
   /**
