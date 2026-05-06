@@ -188,6 +188,13 @@ const connect = async () => {
     return
   }
 
+  // 先清理旧连接（如果存在）
+  // 这确保旧 adapter 的重连定时器和事件监听器被正确清理
+  if (service.value) {
+    service.value.stop()
+    service.value = null
+  }
+
   errorMessage.value = ''
   isConnecting.value = true
   showStatusBar.value = true  // 连接时显示状态栏
@@ -471,7 +478,10 @@ defineExpose({
           <button v-if="!isConnected && !isConnecting" @click="connect" class="btn btn-connect">
             连接
           </button>
-          <template v-else-if="!isConnecting">
+          <button v-else-if="isConnecting" @click="disconnect" class="btn btn-disconnect">
+            断开
+          </button>
+          <template v-else>
             <button @click="reconnect" class="btn btn-reconnect">
               重连
             </button>
