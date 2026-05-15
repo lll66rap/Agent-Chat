@@ -218,6 +218,14 @@ export interface DragState {
 }
 
 /**
+ * CSS 尺寸值类型
+ * 支持：
+ * - number: 视为像素值
+ * - string: 支持 'px' 和 'rem' 单位（如 '10rem'）
+ */
+export type CSSSize = number | string
+
+/**
  * QwenPawChat 组件 Props
  * 定义组件的所有可配置属性
  */
@@ -232,10 +240,10 @@ export interface QwenPawChatProps {
   placeholder?: string
   /** 是否显示关闭按钮 */
   showClose?: boolean
-  /** 窗口宽度（像素），默认 1024 */
-  width?: number
-  /** 内容区最大高度（像素），默认 640 */
-  maxHeight?: number
+  /** 窗口宽度，支持数字(px)或字符串(如 '10rem')，默认 1024 */
+  width?: CSSSize
+  /** 内容区最大高度，支持数字(px)或字符串(如 '20rem')，默认 640 */
+  maxHeight?: CSSSize
   /** 是否可拖拽 */
   draggable?: boolean
   /** 是否显示复制按钮 */

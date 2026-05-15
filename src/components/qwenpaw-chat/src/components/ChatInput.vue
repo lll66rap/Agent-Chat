@@ -46,6 +46,15 @@ const handleKeyup = (e: KeyboardEvent) => {
   if (e.key === 'Enter') {
     handleSend()
   }
+  // 阻止事件冒泡到像素流
+  e.stopPropagation()
+}
+
+/**
+ * 阻止键盘事件冒泡到像素流
+ */
+const stopPropagation = (e: KeyboardEvent) => {
+  e.stopPropagation()
 }
 </script>
 
@@ -56,7 +65,9 @@ const handleKeyup = (e: KeyboardEvent) => {
     :value="modelValue"
     :placeholder="placeholder"
     @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+    @keydown="stopPropagation"
     @keyup="handleKeyup"
+    @keypress="stopPropagation"
   />
   <!-- 停止按钮（发送中显示） -->
   <button

@@ -11,7 +11,8 @@ import ChatMessage from './components/ChatMessage.vue'
 import ChatInput from './components/ChatInput.vue'
 import { WINDOW_DEFAULTS, MESSAGE_CONFIG } from './chat-constants'
 import { setDebugMode } from './api'
-import type { LocalCommand } from './chat-types'
+import { parseCSSValue, formatCSSValue } from './utils/css'
+import type { LocalCommand, CSSSize } from './chat-types'
 import 'katex/dist/katex.min.css'
 
 defineOptions({ name: 'QwenPawChat' })
@@ -28,10 +29,10 @@ const props = defineProps<{
   placeholder?: string
   /** 是否显示关闭按钮 */
   showClose?: boolean
-  /** 宽度（px），默认 1024 */
-  width?: number
-  /** 最大高度（px），默认 640 */
-  maxHeight?: number
+  /** 宽度，支持数字(px)或字符串(如 '10rem')，默认 1024 */
+  width?: CSSSize
+  /** 最大高度，支持数字(px)或字符串(如 '20rem')，默认 640 */
+  maxHeight?: CSSSize
   /** 是否可拖拽 */
   draggable?: boolean
   /** 是否显示复制按钮 */
@@ -54,18 +55,23 @@ const title = props.title || MESSAGE_CONFIG.TITLE
 const userAvatar = props.userAvatar || ''
 const agentAvatar = props.agentAvatar || ''
 const placeholder = props.placeholder || MESSAGE_CONFIG.PLACEHOLDER
-const width = props.width || WINDOW_DEFAULTS.WIDTH
-const maxHeight = props.maxHeight || WINDOW_DEFAULTS.MAX_HEIGHT
 const isDraggable = props.draggable !== false
 const isShowCopy = props.showCopy !== false
 const isDebug = props.debug === true
+
+// 解析 CSS 值
+// widthPx: 用于拖拽边界计算（像素值）
+// widthStyle: 用于模板样式（保留原始单位）
+const widthPx = parseCSSValue(props.width, WINDOW_DEFAULTS.WIDTH)
+const widthStyle = formatCSSValue(props.width || WINDOW_DEFAULTS.WIDTH)
+const maxHeightStyle = formatCSSValue(props.maxHeight || WINDOW_DEFAULTS.MAX_HEIGHT)
 
 // 设置调试模式
 setDebugMode(isDebug)
 
 // 使用拖拽 composable
 const { dragState, windowPosition, computedLeft, resetPosition, onDragStart } = useDrag({
-  width,
+  width: widthPx,
   draggable: isDraggable,
   debug: isDebug
 })
@@ -122,7 +128,7 @@ const handleCopy = (content: string, index: number) => {
   class="qwenpaw-chat"
   :class="{ dragging: dragState.isDragging }"
   :style="{
-    width: width + 'px',
+    width: widthStyle,
     left: computedLeft + 'px',
     bottom: windowPosition.bottom + 'px',
     transform: 'translateX(-50%)'
@@ -143,7 +149,7 @@ const handleCopy = (content: string, index: number) => {
     </div>
   </div>
 
-  <div class="chat-content" :style="{ maxHeight: maxHeight + 'px' }" @scroll="checkScrollPosition">
+  <div class="chat-content" :style="{ maxHeight: maxHeightStyle }" @scroll="checkScrollPosition">
     <!-- 消息列表 -->
     <ChatMessage
       v-for="(item, index) in list"
